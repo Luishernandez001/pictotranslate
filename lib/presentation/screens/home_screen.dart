@@ -1,0 +1,283 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/navigation/tea_routes.dart';
+import '../../data/settings_store.dart';
+import '../providers/app_providers.dart';
+import '../providers/home_search_notifier.dart';
+import '../providers/keywords_provider.dart';
+import '../providers/search_history_provider.dart';
+import '../providers/settings_notifier.dart';
+import '../widgets/pictogram_result_card.dart';
+import 'settings_screen.dart';
+
+class HomeScreen extends ConsumerStatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final _controller = TextEditingController();
+  Timer? _debounce;
+  List<String> _localSuggestions = [];
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onSearchTextChanged(String value, AppSettings settings) {
+    _debounce?.cancel();
+    ref.read(homeSearchProvider.notifier).setQuery(value);
+    _debounce = Timer(const Duration(milliseconds: 320), () {
+      if (!mounted) return;
+      final keywordsAsync = ref.read(keywordsProvider);
+      final list = keywordsAsync.valueOrNull;
+      if (list == null) {
+        setState(() => _localSuggestions = []);
+        return;
+      }
+      final sug = ref.read(homeSearchProvider.notifier).suggestFor(value, list);
+      setState(() => _localSuggestions = sug);
+    });
+  }
+
+  Future<void> _onListen(String word, AppSettings settings) async {
+    final tts = ref.read(ttsServiceProvider);
+    final notifier = ref.read(homeSearchProvider.notifier);
+    await tts.applySettings(settings);
+    notifier.setSpeaking(true);
+    try {
+      await tts.speak(word);
+    } finally {
+      if (mounted) notifier.setSpeaking(false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = ref.watch(appSettingsProvider);
+    final state = ref.watch(homeSearchProvider);
+    final reduce = settings.reduceStimuli;
+
+    ref.listen(keywordsProvider, (_, next) {
+      if (_controller.text.trim().isEmpty) return;
+      if (!next.hasValue) return;
+      _onSearchTextChanged(_controller.text, settings);
+    });
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'PictoTranslate',
+          style: TextStyle(fontSize: settings.effectiveBodySize + 2),
+        ),
+        actions: [
+          IconButton(
+            iconSize: 32,
+            padding: const EdgeInsets.all(16),
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Ajustes',
+            onPressed: () {
+              Navigator.of(context).push<void>(
+                teaAwareRoute<void>(
+                  child: const SettingsScreen(),
+                  reduceStimuli: reduce,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          children: [
+            Text(
+              'Escribe una palabra en inglés y pulsa Buscar.',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            _RecentSearches(
+              settings: settings,
+              onPick: (w) {
+                _controller.text = w;
+                ref.read(homeSearchProvider.notifier).applySuggestion(w);
+                ref.read(homeSearchProvider.notifier).search(w);
+              },
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _controller,
+              textInputAction: TextInputAction.search,
+              style: TextStyle(fontSize: settings.effectiveBodySize),
+              decoration: InputDecoration(
+                hintText: 'Ejemplo: apple',
+                border: const OutlineInputBorder(),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 18,
+                ),
+                suffixIcon: state.loading
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : null,
+              ),
+              onChanged: (v) => _onSearchTextChanged(v, settings),
+              onSubmitted: (_) => ref
+                  .read(homeSearchProvider.notifier)
+                  .search(_controller.text),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 52,
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: state.loading
+                    ? null
+                    : () => ref
+                        .read(homeSearchProvider.notifier)
+                        .search(_controller.text),
+                child: Text(
+                  'Buscar',
+                  style: TextStyle(fontSize: settings.effectiveBodySize),
+                ),
+              ),
+            ),
+            if (_localSuggestions.isNotEmpty && _controller.text.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
+                'Sugerencias',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _localSuggestions.take(8).map((w) {
+                  return ActionChip(
+                    label: Text(w),
+                    onPressed: () {
+                      _controller.text = w;
+                      _controller.selection = TextSelection.fromPosition(
+                        TextPosition(offset: w.length),
+                      );
+                      ref.read(homeSearchProvider.notifier).applySuggestion(w);
+                      setState(() => _localSuggestions = []);
+                      ref.read(homeSearchProvider.notifier).search(w);
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
+            if (state.errorMessage != null) ...[
+              const SizedBox(height: 24),
+              Semantics(
+                liveRegion: true,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    state.errorMessage!,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                  ),
+                ),
+              ),
+              if (state.suggestions.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Palabras parecidas en el diccionario:',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: state.suggestions.map((w) {
+                    return ActionChip(
+                      label: Text(w),
+                      onPressed: () {
+                        _controller.text = w;
+                        ref.read(homeSearchProvider.notifier).search(w);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+            ],
+            if (state.result != null) ...[
+              PictogramResultCard(
+                result: state.result!,
+                displayWord: state.query,
+                settings: settings,
+                speaking: state.speaking,
+                reduceMotion: reduce,
+                onListen: () => _onListen(state.query, settings),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecentSearches extends ConsumerWidget {
+  const _RecentSearches({
+    required this.settings,
+    required this.onPick,
+  });
+
+  final AppSettings settings;
+  final void Function(String word) onPick;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final history = ref.watch(searchHistoryProvider);
+    return history.when(
+      data: (items) {
+        if (items.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 16),
+            Text(
+              'Búsquedas recientes',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: items.take(10).map((w) {
+                return ActionChip(
+                  label: Text(w, style: TextStyle(fontSize: settings.effectiveBodySize - 2)),
+                  onPressed: () => onPick(w),
+                );
+              }).toList(),
+            ),
+          ],
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}
