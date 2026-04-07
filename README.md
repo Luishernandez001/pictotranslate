@@ -20,7 +20,7 @@ lib/
   presentation/
     providers/                       # Riverpod
     screens/                         # Home, Ajustes, Créditos
-    widgets/                         # Tarjeta de resultado + imagen en caché
+    widgets/                         # Tarjeta de resultado + descarga de imagen (Dio)
     services/tts_service.dart       # flutter_tts (en-US)
 test/
   domain/pictogram_result_test.dart
@@ -44,7 +44,7 @@ flutter run
 flutter build apk --debug
 ```
 
-**Requisitos:** conexión a Internet la primera vez que se cargan keywords y pictogramas. Las imágenes se cachean con `cached_network_image`.
+**Requisitos:** conexión a Internet para keywords y pictogramas. Las imágenes se descargan con Dio (timeouts y cabeceras tipo navegador) y se muestran en memoria; en Android esto evita el fallo frecuente de la caché en disco de `cached_network_image`.
 
 ## API ARASAAC (usada en el MVP)
 

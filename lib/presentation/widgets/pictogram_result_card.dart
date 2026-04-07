@@ -1,9 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/constants.dart';
 import '../../data/settings_store.dart';
 import '../../domain/models/pictogram_result.dart';
+import 'pictogram_image.dart';
 
 class PictogramResultCard extends StatelessWidget {
   const PictogramResultCard({
@@ -26,7 +25,6 @@ class PictogramResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final url = ArasaacConstants.pictogramImageUrl(result.id);
     final titleSize = settings.effectiveBodySize + 8;
 
     return Semantics(
@@ -41,35 +39,13 @@ class PictogramResultCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Center(
-                child: CachedNetworkImage(
-                  imageUrl: url,
+                child: PictogramImage(
+                  key: ValueKey<int>(result.id),
+                  pictogramId: result.id,
                   width: 280,
                   height: 280,
-                  fit: BoxFit.contain,
-                  fadeInDuration:
-                      reduceMotion ? Duration.zero : const Duration(milliseconds: 200),
-                  fadeOutDuration:
-                      reduceMotion ? Duration.zero : const Duration(milliseconds: 150),
-                  placeholder: (_, __) => SizedBox(
-                    width: 280,
-                    height: 280,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: reduceMotion ? 2 : 3,
-                      ),
-                    ),
-                  ),
-                  errorWidget: (_, __, ___) => SizedBox(
-                    width: 280,
-                    height: 280,
-                    child: Center(
-                      child: Text(
-                        'No se pudo cargar la imagen',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyLarge,
-                      ),
-                    ),
-                  ),
+                  reduceMotion: reduceMotion,
+                  theme: theme,
                 ),
               ),
               const SizedBox(height: 20),

@@ -12,7 +12,6 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^2.6.1
   dio: ^5.7.0
-  cached_network_image: ^3.4.1
   flutter_tts: ^4.2.0
   shared_preferences: ^2.3.3
 
