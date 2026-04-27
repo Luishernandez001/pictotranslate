@@ -12,6 +12,7 @@ import '../providers/keywords_provider.dart';
 import '../providers/search_history_provider.dart';
 import '../providers/settings_notifier.dart';
 import '../widgets/pictogram_result_card.dart';
+import '../widgets/voice_search_button.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -69,6 +70,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final sug = ref.read(homeSearchProvider.notifier).suggestFor(value, list);
       setState(() => _localSuggestions = sug);
     });
+  }
+
+  /// Rellena el campo de texto con el resultado parcial de voz (tiempo real).
+  void _onVoicePartial(String text) {
+    _controller.text = text;
+    _controller.selection = TextSelection.fromPosition(
+      TextPosition(offset: text.length),
+    );
+    ref.read(homeSearchProvider.notifier).setQuery(text);
+  }
+
+  /// Texto final reconocido: actualiza el campo y lanza la búsqueda.
+  void _onVoiceFinal(String text, String language) {
+    _controller.text = text;
+    _controller.selection = TextSelection.fromPosition(
+      TextPosition(offset: text.length),
+    );
+    setState(() => _localSuggestions = []);
+    ref.read(homeSearchProvider.notifier).search(text, language: language);
+  }
+
+  void _onVoicePermissionDenied() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Permiso de micrófono denegado. Actívalo en Ajustes del sistema.',
+        ),
+        duration: Duration(seconds: 4),
+      ),
+    );
   }
 
   Future<void> _onListen(String word, AppSettings settings) async {
@@ -185,7 +217,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   .read(homeSearchProvider.notifier)
                   .search(_controller.text, language: language),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            VoiceSearchButton(
+              language: language,
+              fontSize: settings.effectiveBodySize,
+              reduceMotion: reduce,
+              onPartialResult: _onVoicePartial,
+              onFinalResult: (text) => _onVoiceFinal(text, language),
+              onPermissionDenied: _onVoicePermissionDenied,
+            ),
+            const SizedBox(height: 12),
             SizedBox(
               height: 52,
               width: double.infinity,
