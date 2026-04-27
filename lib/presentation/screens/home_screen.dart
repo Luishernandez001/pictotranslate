@@ -130,9 +130,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'PictoTranslate',
-          style: TextStyle(fontSize: settings.effectiveBodySize + 2),
+        toolbarHeight: 92,
+        centerTitle: true,
+        title: Semantics(
+          label: 'Logo Pictopedia',
+          child: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Image.asset(
+              'assets/pictopedia.png',
+              height: 95,
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
         actions: [
           IconButton(
