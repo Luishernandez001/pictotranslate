@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants.dart';
 import '../../core/navigation/tea_routes.dart';
 import '../../data/settings_store.dart';
 import '../providers/app_providers.dart';
@@ -32,12 +33,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
-  void _onSearchTextChanged(String value, AppSettings settings) {
+  String _hintFor(String language) {
+    switch (language) {
+      case 'es':
+        return 'Ejemplo: manzana';
+      case 'fr':
+        return 'Exemple : pomme';
+      default:
+        return 'Example: apple';
+    }
+  }
+
+  String _promptFor(String language) {
+    switch (language) {
+      case 'es':
+        return 'Escribe una palabra en español y pulsa Buscar.';
+      case 'fr':
+        return 'Écris un mot en français puis appuie sur Rechercher.';
+      default:
+        return 'Type an English word and press Search.';
+    }
+  }
+
+  void _onSearchTextChanged(String value, AppSettings settings, String language) {
     _debounce?.cancel();
     ref.read(homeSearchProvider.notifier).setQuery(value);
     _debounce = Timer(const Duration(milliseconds: 320), () {
       if (!mounted) return;
-      final keywordsAsync = ref.read(keywordsProvider);
+      final keywordsAsync = ref.read(keywordsProvider(language));
       final list = keywordsAsync.valueOrNull;
       if (list == null) {
         setState(() => _localSuggestions = []);
@@ -64,12 +87,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final settings = ref.watch(appSettingsProvider);
     final state = ref.watch(homeSearchProvider);
+    final language = state.language;
     final reduce = settings.reduceStimuli;
 
-    ref.listen(keywordsProvider, (_, next) {
+    ref.listen(keywordsProvider(language), (_, next) {
       if (_controller.text.trim().isEmpty) return;
       if (!next.hasValue) return;
-      _onSearchTextChanged(_controller.text, settings);
+      _onSearchTextChanged(_controller.text, settings, language);
     });
 
     return Scaffold(
@@ -100,15 +124,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
           children: [
             Text(
-              'Escribe una palabra en inglés y pulsa Buscar.',
+              _promptFor(language),
               style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 14),
+            DropdownButtonFormField<String>(
+              initialValue: language,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Idioma de búsqueda',
+              ),
+              items: ArasaacConstants.supportedLanguages
+                  .map(
+                    (code) => DropdownMenuItem<String>(
+                      value: code,
+                      child: Text(ArasaacConstants.languageLabels[code] ?? code),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                ref.read(homeSearchProvider.notifier).setLanguage(value);
+                _controller.clear();
+                setState(() => _localSuggestions = []);
+              },
             ),
             _RecentSearches(
               settings: settings,
               onPick: (w) {
                 _controller.text = w;
                 ref.read(homeSearchProvider.notifier).applySuggestion(w);
-                ref.read(homeSearchProvider.notifier).search(w);
+                ref.read(homeSearchProvider.notifier).search(w, language: language);
               },
             ),
             const SizedBox(height: 16),
@@ -117,7 +163,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               textInputAction: TextInputAction.search,
               style: TextStyle(fontSize: settings.effectiveBodySize),
               decoration: InputDecoration(
-                hintText: 'Ejemplo: apple',
+                hintText: _hintFor(language),
                 border: const OutlineInputBorder(),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -134,10 +180,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       )
                     : null,
               ),
-              onChanged: (v) => _onSearchTextChanged(v, settings),
+              onChanged: (v) => _onSearchTextChanged(v, settings, language),
               onSubmitted: (_) => ref
                   .read(homeSearchProvider.notifier)
-                  .search(_controller.text),
+                  .search(_controller.text, language: language),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -148,7 +194,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ? null
                     : () => ref
                         .read(homeSearchProvider.notifier)
-                        .search(_controller.text),
+                        .search(_controller.text, language: language),
                 child: Text(
                   'Buscar',
                   style: TextStyle(fontSize: settings.effectiveBodySize),
@@ -175,7 +221,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       );
                       ref.read(homeSearchProvider.notifier).applySuggestion(w);
                       setState(() => _localSuggestions = []);
-                      ref.read(homeSearchProvider.notifier).search(w);
+                      ref.read(homeSearchProvider.notifier).search(w, language: language);
                     },
                   );
                 }).toList(),
@@ -215,7 +261,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       label: Text(w),
                       onPressed: () {
                         _controller.text = w;
-                        ref.read(homeSearchProvider.notifier).search(w);
+                        ref.read(homeSearchProvider.notifier).search(w, language: language);
                       },
                     );
                   }).toList(),

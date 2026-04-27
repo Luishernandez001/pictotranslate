@@ -14,7 +14,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          keywordsProvider.overrideWith((ref) async => <String>[]),
+          keywordsProvider.overrideWith((ref, language) async => <String>[]),
         ],
         child: const PictoTranslateApp(),
       ),

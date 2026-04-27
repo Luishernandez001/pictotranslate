@@ -1,10 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/constants.dart';
 import 'app_providers.dart';
 
-/// Keywords en inglés (cache en memoria durante la sesión).
-final keywordsProvider = FutureProvider<List<String>>((ref) async {
+/// Keywords por idioma (cache en memoria durante la sesión).
+final keywordsProvider = FutureProvider.family<List<String>, String>((ref, language) async {
   final api = ref.watch(arasaacApiServiceProvider);
-  return api.fetchKeywords(ArasaacConstants.searchLanguage);
+  return api.fetchKeywords(language);
 });

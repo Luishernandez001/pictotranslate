@@ -3,6 +3,7 @@ import '../../domain/models/pictogram_result.dart';
 class HomeSearchState {
   const HomeSearchState({
     this.query = '',
+    this.language = 'en',
     this.result,
     this.loading = false,
     this.errorMessage,
@@ -11,6 +12,7 @@ class HomeSearchState {
   });
 
   final String query;
+  final String language;
   final PictogramResult? result;
   final bool loading;
   final String? errorMessage;
@@ -19,6 +21,7 @@ class HomeSearchState {
 
   HomeSearchState copyWith({
     String? query,
+    String? language,
     PictogramResult? result,
     bool clearResult = false,
     bool? loading,
@@ -29,6 +32,7 @@ class HomeSearchState {
   }) {
     return HomeSearchState(
       query: query ?? this.query,
+      language: language ?? this.language,
       result: clearResult ? null : (result ?? this.result),
       loading: loading ?? this.loading,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),

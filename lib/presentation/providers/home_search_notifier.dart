@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/constants.dart';
 import 'app_providers.dart';
 import 'keywords_provider.dart';
 import 'search_history_provider.dart';
@@ -18,6 +17,15 @@ class HomeSearchNotifier extends StateNotifier<HomeSearchState> {
 
   void setQuery(String q) {
     state = state.copyWith(query: q, clearError: true);
+  }
+
+  void setLanguage(String language) {
+    state = state.copyWith(
+      language: language,
+      clearError: true,
+      suggestions: const [],
+      clearResult: true,
+    );
   }
 
   /// Sugerencias locales a partir de la lista de keywords (sin red).
@@ -44,12 +52,14 @@ class HomeSearchNotifier extends StateNotifier<HomeSearchState> {
     return out;
   }
 
-  Future<void> search(String rawQuery) async {
+  Future<void> search(String rawQuery, {String? language}) async {
     final q = rawQuery.trim();
+    final lang = language ?? state.language;
     if (q.isEmpty) {
       state = state.copyWith(
+        language: lang,
         clearResult: true,
-        errorMessage: 'Escribe una palabra en inglés.',
+        errorMessage: 'Escribe una palabra para buscar.',
         suggestions: const [],
       );
       return;
@@ -57,6 +67,7 @@ class HomeSearchNotifier extends StateNotifier<HomeSearchState> {
 
     state = state.copyWith(
       query: q,
+      language: lang,
       loading: true,
       clearError: true,
       clearResult: true,
@@ -65,9 +76,9 @@ class HomeSearchNotifier extends StateNotifier<HomeSearchState> {
 
     try {
       final api = _ref.read(arasaacApiServiceProvider);
-      final list = await api.bestSearch(ArasaacConstants.searchLanguage, q);
+      final list = await api.bestSearch(lang, q);
       if (list.isEmpty) {
-        final keywordsAsync = _ref.read(keywordsProvider);
+        final keywordsAsync = _ref.read(keywordsProvider(lang));
         final keywords = keywordsAsync.valueOrNull ?? const <String>[];
         final sug = suggestFor(q, keywords);
         state = state.copyWith(

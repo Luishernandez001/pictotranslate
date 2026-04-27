@@ -3,6 +3,12 @@ abstract final class ArasaacConstants {
   static const String apiBaseUrl = 'https://api.arasaac.org/v1';
   static const String staticCdnBase = 'https://static.arasaac.org/pictograms';
   static const String searchLanguage = 'en';
+  static const List<String> supportedLanguages = ['en', 'es', 'fr'];
+  static const Map<String, String> languageLabels = {
+    'en': 'English',
+    'es': 'Español',
+    'fr': 'Français',
+  };
 
   /// Cabeceras para el CDN: en Android el User-Agent por defecto de Dart a veces
   /// provoca respuestas raras o descargas que no terminan; imitamos un cliente móvil.
