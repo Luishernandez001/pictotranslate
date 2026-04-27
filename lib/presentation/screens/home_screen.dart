@@ -130,7 +130,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 92,
+        toolbarHeight: 85,
         centerTitle: true,
         title: Semantics(
           label: 'Logo Pictopedia',
