@@ -10,7 +10,7 @@ class CreditsScreen extends ConsumerWidget {
   static const String attributionBody = '''
 PictoTranslate utiliza pictogramas y datos de ARASAAC (Aragonese Open Resource Augmentative and Alternative Communication).
 
-Autor / origen: ARASAAC — https://arasaac.org/
+Autor pictogramas: Sergio Palao. Origen: ARASAAC (http://www.arasaac.org). Licencia: CC (BY-NC-SA). Propiedad: Gobierno de Aragón (España)
 
 Licencia: Creative Commons BY-NC-SA (Reconocimiento – No comercial – Compartir igual). Debes citar la autoría y el origen, no usar los recursos con fines comerciales, y mantener la misma licencia en obras derivadas.
 
